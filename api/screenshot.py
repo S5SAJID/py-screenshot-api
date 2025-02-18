@@ -3,7 +3,7 @@ from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import Response
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
-from playwright.async_api import async_playwright
+import pyppeteer
 import os
 from dotenv import load_dotenv
 
@@ -70,32 +70,41 @@ async def take_screenshot(
         HTTPException: If screenshot capture fails
     """
     try:
-        async with async_playwright() as p:
-            # Launch browser in headless mode
-            browser = await p.chromium.launch(headless=True)
-            
-            # Create new page with specified viewport
-            page = await browser.new_page(
-                viewport={'width': request.width, 'height': request.height}
-            )
-            
-            # Navigate to URL
-            await page.goto(str(request.url), wait_until='networkidle')
-            
-            # Take screenshot
-            screenshot = await page.screenshot(
-                full_page=request.full_page,
-                type='png'
-            )
-            
-            # Close browser
-            await browser.close()
-            
-            # Return screenshot as response
-            return Response(
-                content=screenshot,
-                media_type="image/png"
-            )
+        # Launch browser
+        browser = await pyppeteer.launch(
+            args=['--no-sandbox', '--disable-setuid-sandbox'],
+            headless=True
+        )
+        
+        # Create new page
+        page = await browser.newPage()
+        
+        # Set viewport
+        await page.setViewport({
+            'width': request.width,
+            'height': request.height
+        })
+        
+        # Navigate to URL
+        await page.goto(str(request.url), {
+            'waitUntil': 'networkidle0',
+            'timeout': 30000
+        })
+        
+        # Take screenshot
+        screenshot = await page.screenshot({
+            'fullPage': request.full_page,
+            'type': 'png'
+        })
+        
+        # Close browser
+        await browser.close()
+        
+        # Return screenshot as response
+        return Response(
+            content=screenshot,
+            media_type="image/png"
+        )
             
     except Exception as e:
         raise HTTPException(
