@@ -24,6 +24,10 @@ API_KEY = os.getenv("API_KEY")
 if not API_KEY:
     raise RuntimeError("API_KEY environment variable not set")
 
+# Configure pyppeteer to use /tmp directory
+os.environ["PYPPETEER_HOME"] = "/tmp"
+os.environ["PYPPETEER_DOWNLOAD_HOST"] = "https://storage.googleapis.com"
+
 async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
     """
     Validate API key from request header
@@ -70,10 +74,17 @@ async def take_screenshot(
         HTTPException: If screenshot capture fails
     """
     try:
-        # Launch browser
+        # Launch browser with specific tmp path configuration
         browser = await pyppeteer.launch(
-            args=['--no-sandbox', '--disable-setuid-sandbox'],
-            headless=True
+            args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                f'--user-data-dir=/tmp/chromium',
+                '--single-process'
+            ],
+            headless=True,
+            userDataDir='/tmp/chromium'
         )
         
         # Create new page
