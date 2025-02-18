@@ -5,10 +5,10 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional
 from playwright.async_api import async_playwright
 import os
-from dotenv import load_load_dotenv
+from dotenv import load_dotenv
 
 # Load environment variables
-load_load_dotenv()
+load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI(title="Screenshot API",
