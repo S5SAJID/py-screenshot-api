@@ -3,6 +3,7 @@ from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import Response
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
+import chrome_aws_lambda
 import pyppeteer
 import os
 from dotenv import load_dotenv
@@ -23,10 +24,6 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
 API_KEY = os.getenv("API_KEY")
 if not API_KEY:
     raise RuntimeError("API_KEY environment variable not set")
-
-# Configure pyppeteer to use /tmp directory
-os.environ["PYPPETEER_HOME"] = "/tmp"
-os.environ["PYPPETEER_DOWNLOAD_HOST"] = "https://storage.googleapis.com"
 
 async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
     """
@@ -74,17 +71,12 @@ async def take_screenshot(
         HTTPException: If screenshot capture fails
     """
     try:
-        # Launch browser with specific tmp path configuration
-        browser = await pyppeteer.launch(
-            args=[
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                f'--user-data-dir=/tmp/chromium',
-                '--single-process'
-            ],
-            headless=True,
-            userDataDir='/tmp/chromium'
+        # Get chrome executable path and launch options
+        browser = await chrome_aws_lambda.launch(
+            executablePath=await chrome_aws_lambda.executablePath,
+            args=chrome_aws_lambda.args,
+            defaultViewport=chrome_aws_lambda.defaultViewport,
+            headless=True
         )
         
         # Create new page
@@ -96,7 +88,7 @@ async def take_screenshot(
             'height': request.height
         })
         
-        # Navigate to URL
+        # Navigate to URL with increased timeout
         await page.goto(str(request.url), {
             'waitUntil': 'networkidle0',
             'timeout': 30000
